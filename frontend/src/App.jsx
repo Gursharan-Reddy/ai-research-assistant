@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import './App.css';
 
-const API_BASE = "https://ai-research-assistant-gx8t.onrender.com";
+const API_BASE = "https://ai-research-assistant-gx8t.onrender.com/api";
 
 export default function App() {
   const [file, setFile] = useState(null);
@@ -16,14 +16,12 @@ export default function App() {
   const [chatHistory, setChatHistory] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // File Input Handler
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
     }
   };
 
-  // Upload Document
   const handleUpload = async () => {
     if (!file) return alert('Please select a file to upload.');
 
@@ -37,7 +35,6 @@ export default function App() {
         },
       });
 
-      // Flexible extraction to match backend payload
       const uploadedDoc = res.data.document || {
         id: res.data.filename || file.name,
         filename: res.data.filename || file.name,
@@ -56,7 +53,6 @@ export default function App() {
     }
   };
 
-  // Summarize Selected Document
   const handleSummarize = async () => {
     if (!selectedDocId) {
       setSummaryError('Please select a document to summarize.');
@@ -66,7 +62,6 @@ export default function App() {
 
     try {
       setSummaryError('');
-      // Payload matching main.py SummarizePayload model
       const res = await axios.post(`${API_BASE}/summarize`, { 
         filename: selectedDocId 
       });
@@ -82,7 +77,6 @@ export default function App() {
     }
   };
 
-  // Ask Question (RAG)
   const handleAskQuestion = async (e) => {
     if (e) e.preventDefault();
     if (!question.trim()) return;
@@ -95,7 +89,6 @@ export default function App() {
     setLoading(true);
 
     try {
-      // Payload matching main.py QueryPayload model
       const res = await axios.post(`${API_BASE}/query`, {
         filename: selectedDocId,
         question: userMessage,

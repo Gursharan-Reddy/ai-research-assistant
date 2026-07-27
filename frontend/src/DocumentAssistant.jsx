@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import "./App.css";
 
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "https://ai-research-assistant-gx8t.onrender.com/api";
 
 export default function DocumentAssistant() {
   const [file, setFile] = useState(null);
@@ -12,23 +12,6 @@ export default function DocumentAssistant() {
   const [summary, setSummary] = useState("");
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState({ text: "", type: "" });
-
-  // Fetch documents list on initial mount
-  useEffect(() => {
-    fetchDocuments();
-  }, []);
-
-  const fetchDocuments = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/documents/list`);
-      if (res.ok) {
-        const data = await res.json();
-        setDocuments(data.documents || data || []);
-      }
-    } catch (err) {
-      console.error("Failed to fetch documents:", err);
-    }
-  };
 
   const handleFileUpload = async (e) => {
     e.preventDefault();
@@ -41,7 +24,7 @@ export default function DocumentAssistant() {
     formData.append("file", file);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/documents/upload`, {
+      const res = await fetch(`${API_BASE_URL}/upload`, {
         method: "POST",
         body: formData,
       });
@@ -50,10 +33,18 @@ export default function DocumentAssistant() {
         const data = await res.json();
         setStatusMessage({ text: "Upload successful!", type: "success" });
         setFile(null);
-        fetchDocuments(); // Refresh document list
-        if (data.doc_id) {
-          setSelectedDocId(data.doc_id);
-        }
+
+        const uploadedDoc = data.document || {
+          id: data.filename || file.name,
+          filename: data.filename || file.name,
+        };
+
+        setDocuments((prev) => {
+          const exists = prev.some((doc) => doc.id === uploadedDoc.id);
+          return exists ? prev : [...prev, uploadedDoc];
+        });
+
+        setSelectedDocId(uploadedDoc.id);
       } else {
         const errData = await res.json();
         setStatusMessage({
@@ -62,6 +53,7 @@ export default function DocumentAssistant() {
         });
       }
     } catch (err) {
+      console.error("Upload error:", err);
       setStatusMessage({ text: "Network error during upload.", type: "error" });
     } finally {
       setLoading(false);
@@ -71,6 +63,10 @@ export default function DocumentAssistant() {
   const handleAskQuestion = async (e) => {
     e.preventDefault();
     if (!query.trim()) return;
+    if (!selectedDocId) {
+      alert("Please select an active document first.");
+      return;
+    }
 
     const userQuestion = query;
     setQuery("");
@@ -79,14 +75,11 @@ export default function DocumentAssistant() {
 
     try {
       const payload = {
-        query: userQuestion,
-        search_mode: "hybrid",
+        filename: selectedDocId,
+        question: userQuestion,
       };
-      if (selectedDocId) {
-        payload.doc_id = selectedDocId;
-      }
 
-      const res = await fetch(`${API_BASE_URL}/search/query`, {
+      const res = await fetch(`${API_BASE_URL}/query`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -94,8 +87,7 @@ export default function DocumentAssistant() {
 
       if (res.ok) {
         const data = await res.json();
-        const answerText = data.answer || data.response || JSON.stringify(data);
-        setChatHistory((prev) => [...prev, { sender: "ai", text: answerText }]);
+        setChatHistory((prev) => [...prev, { sender: "ai", text: data.answer }]);
       } else {
         const errData = await res.json();
         setChatHistory((prev) => [
@@ -104,6 +96,7 @@ export default function DocumentAssistant() {
         ]);
       }
     } catch (err) {
+      console.error("Query error:", err);
       setChatHistory((prev) => [
         ...prev,
         { sender: "ai", text: "Network error connecting to backend API." },
@@ -123,15 +116,21 @@ export default function DocumentAssistant() {
     setSummary("");
 
     try {
-      const res = await fetch(`${API_BASE_URL}/analysis/summarize/${selectedDocId}`);
+      const res = await fetch(`${API_BASE_URL}/summarize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: selectedDocId }),
+      });
+
       if (res.ok) {
         const data = await res.json();
-        setSummary(data.summary || data.result || JSON.stringify(data, null, 2));
+        setSummary(data.summary);
       } else {
         const errData = await res.json();
         setSummary(`Failed to generate summary: ${errData.detail || "Error"}`);
       }
     } catch (err) {
+      console.error("Summarize error:", err);
       setSummary("Network error requesting summary.");
     } finally {
       setLoading(false);
@@ -176,7 +175,7 @@ export default function DocumentAssistant() {
             ) : (
               <ul className="doc-list">
                 {documents.map((doc, idx) => {
-                  const id = typeof doc === "string" ? doc : doc.doc_id || doc.id || idx;
+                  const id = typeof doc === "string" ? doc : doc.id || doc.doc_id || idx;
                   const name = doc.filename || doc.name || `Document ${id}`;
                   return (
                     <li

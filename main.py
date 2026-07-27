@@ -5,20 +5,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-# LangChain Document Loaders & Splitters
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 
-# Google Gemini Integration (LLM & Cloud Embeddings)
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
-# Modern Core LCEL Imports
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
-# Load Environment Variables
 load_dotenv()
 
 api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
@@ -27,10 +23,8 @@ if not api_key:
 
 os.environ["GOOGLE_API_KEY"] = api_key
 
-# Initialize FastAPI App
 app = FastAPI(title="AI Research Assistant")
 
-# Configure CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -42,13 +36,10 @@ app.add_middleware(
 UPLOAD_DIR = "uploaded_docs"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# Cache for Vector Stores
 vector_stores = {}
 
-# Google Cloud API Embeddings (Lightweight, instant server startup)
 embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
 
-# Gemini LLM Initialization
 llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2)
 
 
@@ -64,8 +55,6 @@ class QueryPayload(BaseModel):
     filename: str
     question: str
 
-
-# --- API ENDPOINTS ---
 
 @app.get("/")
 def home():
