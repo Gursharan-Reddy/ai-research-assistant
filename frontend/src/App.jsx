@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import './App.css';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = "https://ai-research-assistant-gx8t.onrender.com";
 
 export default function App() {
   const [file, setFile] = useState(null);
