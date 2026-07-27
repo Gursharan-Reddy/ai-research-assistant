@@ -10,11 +10,8 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 
-# Hugging Face Embeddings Import
-from langchain_huggingface import HuggingFaceEmbeddings
-
-# Gemini Model Integration
-from langchain_google_genai import ChatGoogleGenerativeAI
+# Google Gemini Integration (LLM & Cloud Embeddings)
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
 # Modern Core LCEL Imports
 from langchain_core.prompts import ChatPromptTemplate
@@ -48,10 +45,11 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # Cache for Vector Stores
 vector_stores = {}
 
-# Local HuggingFace Embeddings & Active Gemini LLM
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-# In main.py around line 42:
-llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash", temperature=0.2)
+# Google Cloud API Embeddings (Lightweight, instant server startup)
+embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+
+# Gemini LLM Initialization
+llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2)
 
 
 def format_docs(docs):
@@ -89,7 +87,7 @@ async def upload_document(file: UploadFile = File(...)):
         vector_store = FAISS.from_documents(split_docs, embeddings)
         vector_stores[file.filename] = vector_store
         
-        print(f"✅ Indexed '{file.filename}': {len(split_docs)} chunks embedded locally.")
+        print(f"✅ Indexed '{file.filename}': {len(split_docs)} chunks embedded via Google API.")
         
         return {
             "message": "File processed successfully.",
@@ -145,7 +143,7 @@ async def query_document(payload: QueryPayload):
 
     try:
         vector_store = vector_stores[filename]
-        retriever = vector_store.as_retriever(seawrch_kwargs={"k": 8})
+        retriever = vector_store.as_retriever(search_kwargs={"k": 8})
 
         prompt = ChatPromptTemplate.from_template(
             "Answer the question based strictly on the provided context below. "
