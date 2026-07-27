@@ -1,0 +1,24 @@
+# Virtual Environments
+venv/
+.venv/
+env/
+
+# Dependency & Build Directories
+node_modules/
+frontend/node_modules/
+dist/
+build/
+frontend/dist/
+frontend/build/
+
+# Application Cache & Local Storage
+uploaded_docs/
+uploads/
+data/vector_db/
+__pycache__/
+*.pyc
+
+# Environment Secrets
+.env
+.env.local
+.env*.local
