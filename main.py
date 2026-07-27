@@ -1,20 +1,25 @@
 import os
 import shutil
+import traceback
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-from langchain_community.document_loaders import PyPDFLoader
+# LangChain Document Loaders & Splitters (Using PyMuPDFLoader to match pymupdf)
+from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 
+# Google Gemini Integration (LLM & Cloud Embeddings)
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
+# Modern Core LCEL Imports
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
+# Load Environment Variables
 load_dotenv()
 
 api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
@@ -23,8 +28,10 @@ if not api_key:
 
 os.environ["GOOGLE_API_KEY"] = api_key
 
+# Initialize FastAPI App
 app = FastAPI(title="AI Research Assistant")
 
+# Configure CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -36,11 +43,17 @@ app.add_middleware(
 UPLOAD_DIR = "uploaded_docs"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# Cache for Vector Stores
 vector_stores = {}
 
-embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+# Standard Gemini Embeddings
+embeddings = GoogleGenerativeAIEmbeddings(model="gemini-embedding-2-preview")
 
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2)
+llm = ChatGoogleGenerativeAI(
+    model="gemini-3.5-flash",
+    temperature=0.2,
+    max_retries=2
+)
 
 
 def format_docs(docs):
@@ -56,6 +69,8 @@ class QueryPayload(BaseModel):
     question: str
 
 
+# --- API ENDPOINTS ---
+
 @app.get("/")
 def home():
     return {"status": "online", "message": "AI Research Assistant API is running!"}
@@ -69,7 +84,8 @@ async def upload_document(file: UploadFile = File(...)):
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        loader = PyPDFLoader(file_path)
+        # PyMuPDFLoader uses the pymupdf library
+        loader = PyMuPDFLoader(file_path)
         documents = loader.load()
         
         if not documents:
@@ -93,8 +109,12 @@ async def upload_document(file: UploadFile = File(...)):
         }
 
     except Exception as e:
-        print(f"❌ Upload Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print("❌ Upload Error:")
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Upload Failed ({type(e).__name__}): {str(e)}"
+        )
 
 
 @app.post("/api/summarize")
@@ -106,7 +126,7 @@ async def summarize_document(payload: SummarizePayload):
         raise HTTPException(status_code=404, detail="File not found.")
 
     try:
-        loader = PyPDFLoader(file_path)
+        loader = PyMuPDFLoader(file_path)
         docs = loader.load()
         full_text = "\n\n".join([doc.page_content for doc in docs])
 
@@ -137,11 +157,12 @@ async def query_document(payload: QueryPayload):
 
     try:
         vector_store = vector_stores[filename]
-        retriever = vector_store.as_retriever(search_kwargs={"k": 8})
+        # Fetch top relevant chunks
+        retriever = vector_store.as_retriever(search_kwargs={"k": 4})
 
         prompt = ChatPromptTemplate.from_template(
-            "Answer the question based strictly on the provided context below. "
-            "If the answer is not contained in the context, respond with 'The requested information is not in the document.'\n\n"
+            "You are an AI assistant. Answer the user's question using ONLY the provided context.\n"
+            "If the answer cannot be deduced from the context, say 'The requested information is not in the document.'\n\n"
             "Context:\n{context}\n\n"
             "Question: {question}"
         )
@@ -154,7 +175,6 @@ async def query_document(payload: QueryPayload):
         )
 
         answer = rag_chain.invoke(question)
-
         return {"answer": answer}
 
     except Exception as e:

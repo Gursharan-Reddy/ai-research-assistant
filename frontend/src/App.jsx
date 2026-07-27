@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import './App.css';
 
-const API_BASE = "https://ai-research-assistant-gx8t.onrender.com/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://ai-research-assistant-gx8t.onrender.com/api";
 
 export default function App() {
   const [file, setFile] = useState(null);
