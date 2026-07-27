@@ -243,3 +243,25 @@ button:active {
     grid-template-columns: 1fr;
   }
 }
+
+/* Markdown Content Layout & Typography */
+.markdown-content p {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.markdown-content ul, 
+.markdown-content ol {
+  margin-left: 1.25rem;
+  margin-bottom: 0.5rem;
+  list-style-type: disc;
+}
+
+.markdown-content li {
+  margin-bottom: 0.25rem;
+}
+
+.markdown-content strong {
+  color: #1e293b;
+  font-weight: 600;
+}

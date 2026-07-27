@@ -128,21 +128,27 @@ async def summarize_document(payload: SummarizePayload):
     try:
         loader = PyMuPDFLoader(file_path)
         docs = loader.load()
-        full_text = "\n\n".join([doc.page_content for doc in docs])
+        full_text = "\n\n".join([doc.page_content for doc in docs])[:3000]
 
+        # Explicitly instruct Gemini to use clean line breaks and bullet points
         prompt = ChatPromptTemplate.from_template(
-            "Summarize the following document concisely, highlighting key objectives, findings, and conclusions:\n\n{text}"
+            "Summarize the following document in clean, well-formatted Markdown with separate bullet points.\n"
+            "Use line breaks between each point.\n\n"
+            "Format example:\n"
+            "- **Document Objective:** ...\n"
+            "- **Structure & Key Sections:** ...\n"
+            "- **Conclusion:** ...\n\n"
+            "Document Text:\n{text}"
         )
         
         chain = prompt | llm | StrOutputParser()
-        summary_text = chain.invoke({"text": full_text[:4000]})
+        summary_text = chain.invoke({"text": full_text})
 
         return {"summary": summary_text}
 
     except Exception as e:
         print(f"❌ Summarization Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to summarize: {str(e)}")
-
 
 @app.post("/api/query")
 async def query_document(payload: QueryPayload):

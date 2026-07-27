@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
 import './App.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://ai-research-assistant-gx8t.onrender.com/api";
@@ -49,7 +50,8 @@ export default function App() {
       setFile(null);
     } catch (err) {
       console.error('Upload Error:', err);
-      alert('Failed to upload document.');
+      const errorDetail = err.response?.data?.detail || 'Failed to upload document.';
+      alert(`Upload Error: ${errorDetail}`);
     }
   };
 
@@ -153,7 +155,9 @@ export default function App() {
             <h3>Document Summary</h3>
             {summaryError && <p className="error">{summaryError}</p>}
             {summary ? (
-              <p className="summary-text">{summary}</p>
+              <div className="summary-text markdown-content">
+                <ReactMarkdown>{summary}</ReactMarkdown>
+              </div>
             ) : (
               !summaryError && (
                 <p className="summary-text" style={{ color: '#94a3b8' }}>
@@ -178,7 +182,9 @@ export default function App() {
                     className={`chat-bubble ${chat.sender === 'You' ? 'user' : 'ai'}`}
                   >
                     <strong>{chat.sender}:</strong>
-                    <p>{chat.text}</p>
+                    <div className="markdown-content">
+                      <ReactMarkdown>{chat.text}</ReactMarkdown>
+                    </div>
                   </div>
                 ))
               )}
