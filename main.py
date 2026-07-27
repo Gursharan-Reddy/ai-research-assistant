@@ -67,6 +67,11 @@ class QueryPayload(BaseModel):
 
 # --- API ENDPOINTS ---
 
+@app.get("/")
+def home():
+    return {"status": "online", "message": "AI Research Assistant API is running!"}
+
+
 @app.post("/api/upload")
 async def upload_document(file: UploadFile = File(...)):
     try:
